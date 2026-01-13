@@ -128,6 +128,10 @@ static unsigned int poll_queues;
 module_param_cb(poll_queues, &io_queue_count_ops, &poll_queues, 0644);
 MODULE_PARM_DESC(poll_queues, "Number of queues to use for polled IO.");
 
+static unsigned int max_queues;
+module_param_cb(max_queues, &io_queue_count_ops, &max_queues, 0644);
+MODULE_PARM_DESC(max_queues, "Max of queues to use.");
+
 static bool noacpi;
 module_param(noacpi, bool, 0444);
 MODULE_PARM_DESC(noacpi, "disable acpi bios quirks");
@@ -2762,6 +2766,10 @@ static int nvme_setup_io_queues(struct nvme_dev *dev)
 	dev->nr_poll_queues = poll_queues;
 
 	nr_io_queues = dev->nr_allocated_queues - 1;
+	if (max_queues > 0 && max_queues < nr_io_queues &&
+	    max_queues > (write_queues + poll_queues))
+		nr_io_queues = max_queues;
+
 	result = nvme_set_queue_count(&dev->ctrl, &nr_io_queues);
 	if (result < 0)
 		return result;
