@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/sort.h>
+#include <linux/topology.h>
 #include <linux/group_cpus.h>
 
 #ifdef CONFIG_SMP
@@ -14,7 +15,7 @@
 static void grp_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
 				unsigned int cpus_per_grp)
 {
-	const struct cpumask *siblmsk;
+	const struct cpumask *siblmsk, *clustmsk;
 	int cpu, sibl;
 
 	for ( ; cpus_per_grp > 0; ) {
@@ -32,6 +33,18 @@ static void grp_spread_init_one(struct cpumask *irqmsk, struct cpumask *nmsk,
 		siblmsk = topology_sibling_cpumask(cpu);
 		for (sibl = -1; cpus_per_grp > 0; ) {
 			sibl = cpumask_next(sibl, siblmsk);
+			if (sibl >= nr_cpu_ids)
+				break;
+			if (!cpumask_test_and_clear_cpu(sibl, nmsk))
+				continue;
+			cpumask_set_cpu(sibl, irqmsk);
+			cpus_per_grp--;
+		}
+
+		/* Then prefer CPUs in the same cluster (shared L2) */
+		clustmsk = topology_cluster_cpumask(cpu);
+		for (sibl = -1; cpus_per_grp > 0; ) {
+			sibl = cpumask_next(sibl, clustmsk);
 			if (sibl >= nr_cpu_ids)
 				break;
 			if (!cpumask_test_and_clear_cpu(sibl, nmsk))
