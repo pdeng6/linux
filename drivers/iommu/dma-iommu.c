@@ -1233,6 +1233,18 @@ void iommu_dma_unmap_phys(struct device *dev, dma_addr_t dma_handle,
 {
 	phys_addr_t phys;
 
+	/*
+	 * For DMA-coherent devices that never use swiotlb bounce buffers,
+	 * the iova_to_phys page table walk is unnecessary: arch_sync_dma_for_cpu
+	 * will not be called and swiotlb_tbl_unmap_single will find no pool.
+	 * Skip the expensive IOMMU page table walk in this common fast path.
+	 */
+	if (dev_is_dma_coherent(dev) && !dev_use_swiotlb(dev, size, dir) &&
+	    !(attrs & DMA_ATTR_MMIO)) {
+		__iommu_dma_unmap(dev, dma_handle, size);
+		return;
+	}
+
 	if (attrs & DMA_ATTR_MMIO) {
 		__iommu_dma_unmap(dev, dma_handle, size);
 		return;
