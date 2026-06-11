@@ -38,6 +38,7 @@
 #define IS_USB_DEVICE(pdev) ((pdev->class >> 8) == PCI_CLASS_SERIAL_USB)
 #define IS_ISA_DEVICE(pdev) ((pdev->class >> 8) == PCI_CLASS_BRIDGE_ISA)
 #define IS_AZALIA(pdev) ((pdev)->vendor == 0x8086 && (pdev)->device == 0x3a3e)
+#define IS_NVME(pdev) ((pdev->class >> 8) == (PCI_CLASS_STORAGE_EXPRESS >> 8))
 
 #define IOAPIC_RANGE_START	(0xfee00000)
 #define IOAPIC_RANGE_END	(0xfeefffff)
@@ -1400,6 +1401,8 @@ static int device_def_domain_type(struct device *dev)
 		struct pci_dev *pdev = to_pci_dev(dev);
 
 		if ((iommu_identity_mapping & IDENTMAP_AZALIA) && IS_AZALIA(pdev))
+			return IOMMU_DOMAIN_IDENTITY;
+		if (IS_NVME(pdev))
 			return IOMMU_DOMAIN_IDENTITY;
 	}
 
